@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -113,6 +114,8 @@ func (c *Connection) Open() error {
 
 // Close destroys an active datasource connection
 func (c *Connection) Close() error {
+	fmt.Println("pop is stupid")
+	return nil
 	return errors.Wrap(c.Store.Close(), "couldn't close connection")
 }
 

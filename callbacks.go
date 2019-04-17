@@ -2,11 +2,11 @@ package pop
 
 import (
 	"context"
-	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"reflect"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 // AfterFindable callback will be called after a record, or records,

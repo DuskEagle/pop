@@ -141,6 +141,7 @@ func (c *Connection) All(ctx context.Context, models interface{}) error {
 func (q *Query) All(ctx context.Context, models interface{}) error {
 	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/All")
 	defer span.Finish()
+	span.SetTag("models", reflect.TypeOf(models).String())
 	err := q.Connection.timeFunc("All", func() error {
 		m := &Model{Value: models}
 		err := q.Connection.Dialect.SelectMany(q.Connection.Store, m, *q)
@@ -170,6 +171,8 @@ func (q *Query) All(ctx context.Context, models interface{}) error {
 func (q *Query) paginateModel(ctx context.Context, models interface{}) error {
 	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/paginateModel")
 	defer span.Finish()
+	span.SetTag("models", reflect.TypeOf(models).String())
+
 	if q.Paginator == nil {
 		return nil
 	}
@@ -207,6 +210,7 @@ func (c *Connection) Load(ctx context.Context, model interface{}, fields ...stri
 func (q *Query) eagerAssociations(ctx context.Context, model interface{}) error {
 	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/eagerAssociations")
 	defer span.Finish()
+	span.SetTag("model", reflect.TypeOf(model).String())
 
 	var err error
 

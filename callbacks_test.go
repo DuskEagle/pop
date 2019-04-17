@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -58,7 +59,7 @@ func Test_Callbacks_on_Slice(t *testing.T) {
 		}
 
 		users := CallbacksUsers{}
-		r.NoError(tx.All(&users))
+		r.NoError(tx.All(context.TODO(),&users))
 
 		r.Len(users, 2)
 

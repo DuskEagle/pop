@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io"
@@ -209,7 +210,7 @@ func (p *cockroach) TruncateAll(tx *Connection) error {
 	}
 
 	var tables []table
-	if err := tx.RawQuery(tableQuery, tx.Dialect.Details().Database).All(&tables); err != nil {
+	if err := tx.RawQuery(tableQuery, tx.Dialect.Details().Database).All(context.TODO(), &tables); err != nil {
 		return err
 	}
 

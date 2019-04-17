@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -12,6 +13,7 @@ import (
 	"github.com/gobuffalo/pop/logging"
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
+ 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 var rLimitOffset = regexp.MustCompile("(?i)(limit [0-9]+ offset [0-9]+)$")
@@ -120,21 +122,23 @@ func (q *Query) Last(model interface{}) error {
 // All retrieves all of the records in the database that match the query.
 //
 //	c.All(&[]User{})
-func (c *Connection) All(models interface{}) error {
-	return Q(c).All(models)
+func (c *Connection) All(ctx context.Context, models interface{}) error {
+	return Q(c).All(ctx, models)
 }
 
 // All retrieves all of the records in the database that match the query.
 //
 //	q.Where("name = ?", "mark").All(&[]User{})
-func (q *Query) All(models interface{}) error {
+func (q *Query) All(ctx context.Context, models interface{}) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/All")
+	defer span.Finish()
 	err := q.Connection.timeFunc("All", func() error {
 		m := &Model{Value: models}
 		err := q.Connection.Dialect.SelectMany(q.Connection.Store, m, *q)
 		if err != nil {
 			return err
 		}
-		err = q.paginateModel(models)
+		err = q.paginateModel(ctx, models)
 		if err != nil {
 			return err
 		}
@@ -154,7 +158,9 @@ func (q *Query) All(models interface{}) error {
 	return nil
 }
 
-func (q *Query) paginateModel(models interface{}) error {
+func (q *Query) paginateModel(ctx context.Context, models interface{}) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/paginateModel")
+	defer span.Finish()
 	if q.Paginator == nil {
 		return nil
 	}
@@ -239,7 +245,7 @@ func (q *Query) eagerAssociations(model interface{}) error {
 		query = query.RawQuery(sqlSentence, args...)
 
 		if association.Kind() == reflect.Slice || association.Kind() == reflect.Array {
-			err = query.All(association.Interface())
+			err = query.All(context.TODO(), association.Interface())
 		}
 
 		if association.Kind() == reflect.Struct {

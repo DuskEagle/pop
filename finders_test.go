@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gobuffalo/nulls"
@@ -461,12 +462,12 @@ func Test_All(t *testing.T) {
 		}
 
 		u := Users{}
-		err := tx.All(&u)
+		err := tx.All(context.TODO(), &u)
 		r.NoError(err)
 		r.Equal(len(u), 3)
 
 		u = Users{}
-		err = tx.Where("name = 'Mark'").All(&u)
+		err = tx.Where("name = 'Mark'").All(context.TODO(), &u)
 		r.NoError(err)
 		r.Equal(len(u), 1)
 	})
@@ -487,7 +488,7 @@ func Test_All_Eager_Slice_With_All(t *testing.T) {
 		}
 
 		u := Users{}
-		err := tx.Eager("Books.User").All(&u)
+		err := tx.Eager("Books.User").All(context.TODO(), &u)
 		r.NoError(err)
 		r.Equal(len(u), 3)
 

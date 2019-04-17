@@ -8,6 +8,7 @@ install: deps
 deps:
 	$(GO_BIN) get github.com/gobuffalo/release
 	$(GO_BIN) get github.com/gobuffalo/packr/v2/packr2
+	$(GO_BIN) get gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer
 	$(GO_BIN) get -tags ${TAGS} -t ./...
 ifeq ($(GO111MODULE),on)
 	$(GO_BIN) mod tidy

@@ -22,19 +22,22 @@ var rLimit = regexp.MustCompile("(?i)(limit [0-9]+)$")
 // Find the first record of the model in the database with a particular id.
 //
 //	c.Find(&User{}, 1)
-func (c *Connection) Find(model interface{}, id interface{}) error {
-	return Q(c).Find(model, id)
+func (c *Connection) Find(ctx context.Context, model interface{}, id interface{}) error {
+	return Q(c).Find(ctx, model, id)
 }
 
 // Find the first record of the model in the database with a particular id.
 //
 //	q.Find(&User{}, 1)
-func (q *Query) Find(model interface{}, id interface{}) error {
+func (q *Query) Find(ctx context.Context, model interface{}, id interface{}) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/Find")
+	defer span.Finish()
+
 	m := &Model{Value: model}
 	idq := m.whereID()
 	switch t := id.(type) {
 	case uuid.UUID:
-		return q.Where(idq, t.String()).First(model)
+		return q.Where(idq, t.String()).First(ctx, model)
 	case string:
 		l := len(t)
 		if l > 0 {
@@ -44,33 +47,36 @@ func (q *Query) Find(model interface{}, id interface{}) error {
 				var err error
 				id, err = strconv.Atoi(t)
 				if err != nil {
-					return q.Where(idq, t).First(model)
+					return q.Where(idq, t).First(ctx, model)
 				}
 			}
 		}
 	}
 
-	return q.Where(idq, id).First(model)
+	return q.Where(idq, id).First(ctx, model)
 }
 
 // First record of the model in the database that matches the query.
 //
 //	c.First(&User{})
-func (c *Connection) First(model interface{}) error {
-	return Q(c).First(model)
+func (c *Connection) First(ctx context.Context, model interface{}) error {
+	return Q(c).First(ctx, model)
 }
 
 // First record of the model in the database that matches the query.
 //
 //	q.Where("name = ?", "mark").First(&User{})
-func (q *Query) First(model interface{}) error {
+func (q *Query) First(ctx context.Context, model interface{}) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/First")
+	defer span.Finish()
+
 	err := q.Connection.timeFunc("First", func() error {
 		q.Limit(1)
 		m := &Model{Value: model}
 		if err := q.Connection.Dialect.SelectOne(q.Connection.Store, m, *q); err != nil {
 			return err
 		}
-		return m.afterFind(q.Connection)
+		return m.afterFind(ctx, q.Connection)
 	})
 
 	if err != nil {
@@ -78,7 +84,7 @@ func (q *Query) First(model interface{}) error {
 	}
 
 	if q.eager {
-		err = q.eagerAssociations(model)
+		err = q.eagerAssociations(ctx, model)
 		q.disableEager()
 		return err
 	}
@@ -88,14 +94,17 @@ func (q *Query) First(model interface{}) error {
 // Last record of the model in the database that matches the query.
 //
 //	c.Last(&User{})
-func (c *Connection) Last(model interface{}) error {
-	return Q(c).Last(model)
+func (c *Connection) Last(ctx context.Context, model interface{}) error {
+	return Q(c).Last(ctx, model)
 }
 
 // Last record of the model in the database that matches the query.
 //
 //	q.Where("name = ?", "mark").Last(&User{})
-func (q *Query) Last(model interface{}) error {
+func (q *Query) Last(ctx context.Context, model interface{}) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/Last")
+	defer span.Finish()
+
 	err := q.Connection.timeFunc("Last", func() error {
 		q.Limit(1)
 		q.Order("created_at DESC, id DESC")
@@ -103,7 +112,7 @@ func (q *Query) Last(model interface{}) error {
 		if err := q.Connection.Dialect.SelectOne(q.Connection.Store, m, *q); err != nil {
 			return err
 		}
-		return m.afterFind(q.Connection)
+		return m.afterFind(ctx, q.Connection)
 	})
 
 	if err != nil {
@@ -111,7 +120,7 @@ func (q *Query) Last(model interface{}) error {
 	}
 
 	if q.eager {
-		err = q.eagerAssociations(model)
+		err = q.eagerAssociations(ctx, model)
 		q.disableEager()
 		return err
 	}
@@ -142,7 +151,7 @@ func (q *Query) All(ctx context.Context, models interface{}) error {
 		if err != nil {
 			return err
 		}
-		return m.afterFind(q.Connection)
+		return m.afterFind(ctx, q.Connection)
 	})
 
 	if err != nil {
@@ -150,7 +159,7 @@ func (q *Query) All(ctx context.Context, models interface{}) error {
 	}
 
 	if q.eager {
-		err = q.eagerAssociations(models)
+		err = q.eagerAssociations(ctx, models)
 		q.disableEager()
 		return err
 	}
@@ -185,15 +194,20 @@ func (q *Query) paginateModel(ctx context.Context, models interface{}) error {
 //
 // tx.First(&u)
 // tx.Load(&u)
-func (c *Connection) Load(model interface{}, fields ...string) error {
+func (c *Connection) Load(ctx context.Context, model interface{}, fields ...string) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/Load")
+	defer span.Finish()
 	q := Q(c)
 	q.eagerFields = fields
-	err := q.eagerAssociations(model)
+	err := q.eagerAssociations(ctx, model)
 	q.disableEager()
 	return err
 }
 
-func (q *Query) eagerAssociations(model interface{}) error {
+func (q *Query) eagerAssociations(ctx context.Context, model interface{}) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/finders/eagerAssociations")
+	defer span.Finish()
+
 	var err error
 
 	// eagerAssociations for a slice or array model passed as a param.
@@ -202,7 +216,7 @@ func (q *Query) eagerAssociations(model interface{}) error {
 		reflect.Indirect(v).Kind() == reflect.Array {
 		v = v.Elem()
 		for i := 0; i < v.Len(); i++ {
-			err = q.eagerAssociations(v.Index(i).Addr().Interface())
+			err = q.eagerAssociations(ctx, v.Index(i).Addr().Interface())
 			if err != nil {
 				return err
 			}
@@ -245,11 +259,11 @@ func (q *Query) eagerAssociations(model interface{}) error {
 		query = query.RawQuery(sqlSentence, args...)
 
 		if association.Kind() == reflect.Slice || association.Kind() == reflect.Array {
-			err = query.All(context.TODO(), association.Interface())
+			err = query.All(ctx, association.Interface())
 		}
 
 		if association.Kind() == reflect.Struct {
-			err = query.First(association.Interface())
+			err = query.First(ctx, association.Interface())
 		}
 
 		if err != nil && errors.Cause(err) != sql.ErrNoRows {
@@ -262,7 +276,7 @@ func (q *Query) eagerAssociations(model interface{}) error {
 			v = reflect.Indirect(reflect.ValueOf(model)).FieldByName(inner.Name)
 			innerQuery := Q(query.Connection)
 			innerQuery.eagerFields = []string{inner.Fields}
-			err = innerQuery.eagerAssociations(v.Addr().Interface())
+			err = innerQuery.eagerAssociations(ctx, v.Addr().Interface())
 			if err != nil {
 				return err
 			}

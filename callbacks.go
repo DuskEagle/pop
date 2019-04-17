@@ -1,6 +1,8 @@
 package pop
 
 import (
+	"context"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -13,7 +15,10 @@ type AfterFindable interface {
 	AfterFind(*Connection) error
 }
 
-func (m *Model) afterFind(c *Connection) error {
+func (m *Model) afterFind(ctx context.Context, c *Connection) error {
+	span, ctx := tracer.StartSpanFromContext(ctx, "pop/callbacks/afterFind")
+	defer span.Finish()
+
 	if x, ok := m.Value.(AfterFindable); ok {
 		if err := x.AfterFind(c); err != nil {
 			return errors.WithStack(err)

@@ -234,7 +234,7 @@ func (p *cockroach) TruncateAll(tx *Connection) error {
 }
 
 func (p *cockroach) AfterOpen(c *Connection) error {
-	if err := c.RawQuery(`select version() AS "version"`).First(&p.info); err != nil {
+	if err := c.RawQuery(`select version() AS "version"`).First(context.TODO(), &p.info); err != nil {
 		return err
 	}
 	if s := strings.Split(p.info.VersionString, " "); len(s) > 3 {

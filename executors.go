@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/gobuffalo/pop/associations"
@@ -14,7 +15,7 @@ import (
 func (c *Connection) Reload(model interface{}) error {
 	sm := Model{Value: model}
 	return sm.iterate(func(m *Model) error {
-		return c.Find(m.Value, m.ID())
+		return c.Find(context.TODO(), m.Value, m.ID())
 	})
 }
 

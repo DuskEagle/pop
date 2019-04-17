@@ -3,6 +3,7 @@
 package pop
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -196,7 +197,7 @@ func (m *sqlite) TruncateAll(tx *Connection) error {
 		Name string `db:"name"`
 	}{}
 
-	err := tx.RawQuery(tableNames).All(&names)
+	err := tx.RawQuery(tableNames).All(context.TODO(), &names)
 	if err != nil {
 		return err
 	}
